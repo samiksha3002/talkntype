@@ -140,47 +140,36 @@ export default function Home() {
 
   return (
     <main className="min-h-screen w-full bg-white overflow-x-hidden">
-      {/* Slider */}
-      <div className="w-full overflow-hidden px-[1px] flex justify-center items-center bg-white">
-        <div className="w-full aspect-[16/6.5] relative max-w-7xl rounded-md overflow-hidden">
-          {images.map((src, idx) => (
-            <img
-              key={idx}
-              src={src}
-              alt={`Slide ${idx + 1}`}
-              className={`absolute w-full h-full object-contain transition-opacity duration-1000 ${
-                idx === slideIndex ? "opacity-100" : "opacity-0"
-              }`}
-            />
-          ))}
-        </div>
+      {/* Responsive Fullscreen Image Slider */}
+      {/* Full-Width Slider */}
+      <div className="relative w-screen h-[90vh] overflow-hidden">
+        {images.map((src, idx) => (
+          <img
+            key={idx}
+            src={src}
+            alt={`Slide ${idx + 1}`}
+            className={`absolute top-0 left-0 w-full h-full object-contain transition-opacity duration-1000 ${
+              idx === slideIndex ? "opacity-100 z-10" : "opacity-0 z-0"
+            }`}
+          />
+        ))}
       </div>
 
-      {/* Logo */}
-      <header className="text-center bg-white py-4">
-        <div className="inline-block animate-pulse">
-          <img src="/logo.jpg" alt="Logo" className="max-w-[90px] mx-auto" />
-        </div>
-      </header>
-
-      {/* About Section */}
-      <section className="py-16 px-5 bg-gradient-to-br from-white to-gray-100 text-center relative">
-        <div className="absolute top-0 left-0 right-0 h-[5px] bg-gradient-to-r from-green-500 to-green-300" />
-        <h2 className="text-3xl md:text-4xl font-semibold text-gray-800 mb-6">
-          Focus on clients while TalknType does the paperwork
-        </h2>
-        <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">
-          Fast, fluent, flexible Dragon Legal speech recognition enables you to
-          accurately capture and format specialized legal documentation by
-          voice—at your desk or on the go. Robust legal transcription
-          capabilities and powerful customizations can be easily shared and
-          deployed across a practice or legal department.
-        </p>
-      </section>
+      {/* Animated Zooming Logo */}
+      <div className="w-full bg-white py-8 flex justify-center">
+        <img
+          src="/logo.jpg"
+          alt="Logo"
+          className="w-28 h-28 object-contain animate-pulse"
+          style={{
+            animation: "zoomInOut 4s ease-in-out infinite",
+          }}
+        />
+      </div>
 
       {/* Voice Typing Section */}
       <section className="py-16 px-5 bg-gray-50 flex justify-center items-center">
-        <div className="w-full max-w-4xl bg-white p-10 rounded-xl shadow-md border border-gray-200 text-center transition-transform hover:-translate-y-1">
+        <div className="w-full max-w-4xl bg-white p-6 md:p-10 rounded-xl shadow-md border border-gray-200 text-center transition-transform hover:-translate-y-1">
           <h2 className="text-2xl font-bold mb-6 text-gray-800">
             🎤 Start Typing by Voice
           </h2>
@@ -237,6 +226,19 @@ export default function Home() {
           More Info
         </button>
       </div>
+
+      {/* Custom CSS for Zoom Animation */}
+      <style jsx global>{`
+        @keyframes zoomInOut {
+          0%,
+          100% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.1);
+          }
+        }
+      `}</style>
     </main>
   );
 }
