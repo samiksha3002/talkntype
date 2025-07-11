@@ -2,19 +2,26 @@
 
 import React, { useEffect, useRef, useState } from "react";
 
+// Declare global for TS compatibility
+declare global {
+  interface Window {
+    webkitSpeechRecognition: any;
+  }
+}
+
 const images = ["/Image.jpg", "/Image2.jpg"];
 
 export default function Home() {
   const [slideIndex, setSlideIndex] = useState(0);
-  const recognitionRef = useRef(null);
+  const recognitionRef = useRef<any>(null);
   const [running, setRunning] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [language, setLanguage] = useState("en-IN");
 
-  const canvasRef = useRef(null);
-  const audioCtxRef = useRef(null);
-  const analyserRef = useRef(null);
-  const sourceRef = useRef(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -24,7 +31,10 @@ export default function Home() {
   }, []);
 
   const startSpeechRecognition = () => {
-    if (!("webkitSpeechRecognition" in window)) {
+    if (
+      typeof window === "undefined" ||
+      !("webkitSpeechRecognition" in window)
+    ) {
       alert("Speech Recognition not supported. Use Chrome.");
       return;
     }
@@ -34,7 +44,7 @@ export default function Home() {
     recognition.interimResults = true;
     recognition.lang = language;
 
-    recognition.onresult = (event) => {
+    recognition.onresult = (event: any) => {
       let interim = "";
       let final = transcript;
 
@@ -50,7 +60,7 @@ export default function Home() {
       setTranscript(final + interim);
     };
 
-    recognition.onerror = (event) => {
+    recognition.onerror = (event: any) => {
       console.error("Recognition error:", event.error);
     };
 
@@ -67,10 +77,10 @@ export default function Home() {
     navigator.mediaDevices
       .getUserMedia({ audio: true })
       .then((stream) => {
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext("2d");
+        const canvas = canvasRef.current!;
+        const ctx = canvas.getContext("2d")!;
         const audioCtx = new (window.AudioContext ||
-          window.webkitAudioContext)();
+          (window as any).webkitAudioContext)();
         const analyser = audioCtx.createAnalyser();
         const source = audioCtx.createMediaStreamSource(stream);
 
@@ -121,11 +131,11 @@ export default function Home() {
 
   const printText = () => {
     const printWindow = window.open("", "", "width=600,height=600");
-    printWindow.document.write("<pre>" + transcript + "</pre>");
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.close();
+    printWindow?.document.write("<pre>" + transcript + "</pre>");
+    printWindow?.document.close();
+    printWindow?.focus();
+    printWindow?.print();
+    printWindow?.close();
   };
 
   return (
@@ -153,7 +163,7 @@ export default function Home() {
         </div>
       </header>
 
-      {/* About */}
+      {/* About Section */}
       <section className="py-16 px-5 bg-gradient-to-br from-white to-gray-100 text-center relative">
         <div className="absolute top-0 left-0 right-0 h-[5px] bg-gradient-to-r from-green-500 to-green-300" />
         <h2 className="text-3xl md:text-4xl font-semibold text-gray-800 mb-6">
@@ -168,7 +178,7 @@ export default function Home() {
         </p>
       </section>
 
-      {/* Voice Box */}
+      {/* Voice Typing Section */}
       <section className="py-16 px-5 bg-gray-50 flex justify-center items-center">
         <div className="w-full max-w-4xl bg-white p-10 rounded-xl shadow-md border border-gray-200 text-center transition-transform hover:-translate-y-1">
           <h2 className="text-2xl font-bold mb-6 text-gray-800">
@@ -218,7 +228,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer Button */}
+      {/* Footer */}
       <div className="text-center my-6">
         <button
           onClick={() => alert("More information coming soon...")}
