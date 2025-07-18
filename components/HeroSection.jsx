@@ -1,6 +1,10 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import dynamic from "next/dynamic";
+import "react-quill/dist/quill.snow.css";
+
+const ReactQuill = dynamic(() => import("react-quill"), { ssr: false });
 
 const languages = [
   { name: "English (India)", code: "en-IN" },
@@ -24,18 +28,15 @@ const languages = [
 ];
 
 const Hero = () => {
-  const [text, setText] = useState("");
-  const [interim, setInterim] = useState("");
-  const [listening, setListening] = useState(false);
-  const [translated, setTranslated] = useState("");
-  const [isTranslating, setIsTranslating] = useState(false);
+  const [editorContent, setEditorContent] = useState("");
   const [speechLang, setSpeechLang] = useState("en-IN");
   const [translateLang, setTranslateLang] = useState("hi");
+  const [translated, setTranslated] = useState("");
+  const [listening, setListening] = useState(false);
   const recognitionRef = useRef(null);
-  const textAreaRef = useRef(null);
-  const finalTranscriptSetRef = useRef(new Set());
-  const [translitText, setTranslitText] = useState("");
+  const [isTranslating, setIsTranslating] = useState(false);
   const [enableTranslit, setEnableTranslit] = useState(false);
+  const [translitText, setTranslitText] = useState("");
 
   const handleSpeech = () => {
     const SpeechRecognition =
@@ -49,35 +50,31 @@ const Hero = () => {
       recognitionRef.current.interimResults = true;
 
       recognitionRef.current.onresult = (event) => {
-        let interimTranscript = "";
-        let newFinal = false;
+        let interim = "";
+        let finalText = "";
 
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           const result = event.results[i];
-          let transcript = result[0].transcript.trim().toLowerCase();
+          let transcript = result[0].transcript.trim();
 
           transcript = transcript
-            .replace(/\bfull stop\b/g, ".")
-            .replace(/\bcomma\b/g, ",")
-            .replace(/\bquestion mark\b/g, "?")
-            .replace(/\bexclamation mark\b/g, "!")
-            .replace(/\bnew line\b/g, "\n")
-            .replace(/\bnext paragraph\b/g, "\n\n")
-            .replace(/\bcolon\b/g, ":")
-            .replace(/\bsemicolon\b/g, ";");
+            .replace(/\bfull stop\b/gi, ".")
+            .replace(/\bcomma\b/gi, ",")
+            .replace(/\bquestion mark\b/gi, "?")
+            .replace(/\bexclamation mark\b/gi, "!")
+            .replace(/\bnew line\b/gi, "<br>")
+            .replace(/\bnext paragraph\b/gi, "<br><br>")
+            .replace(/\bcolon\b/gi, ":")
+            .replace(/\bsemicolon\b/gi, ";");
 
           if (result.isFinal) {
-            if (!finalTranscriptSetRef.current.has(transcript)) {
-              setText((prev) => prev + transcript + " ");
-              finalTranscriptSetRef.current.add(transcript);
-              newFinal = true;
-            }
+            finalText += transcript + " ";
           } else {
-            interimTranscript += transcript;
+            interim += transcript;
           }
         }
-        if (newFinal) setInterim("");
-        else setInterim(interimTranscript);
+
+        setEditorContent((prev) => prev + finalText);
       };
 
       recognitionRef.current.onerror = (event) => {
@@ -98,13 +95,11 @@ const Hero = () => {
     recognitionRef.current.lang = speechLang;
 
     if (!listening) {
-      setListening(true);
-      finalTranscriptSetRef.current.clear();
-      setInterim("");
       recognitionRef.current.start();
+      setListening(true);
     } else {
-      setListening(false);
       recognitionRef.current.stop();
+      setListening(false);
     }
   };
 
@@ -114,49 +109,30 @@ const Hero = () => {
       const res = await fetch("/api/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, to: translateLang }),
+        body: JSON.stringify({ text: editorContent, to: translateLang }),
       });
-
       const data = await res.json();
       if (data.translated) setTranslated(data.translated);
-      else alert("❌ No translation received.");
     } catch (err) {
-      console.error("Translation error", err);
-      alert("Translation failed. Check console for error.");
+      alert("Translation failed");
     } finally {
       setIsTranslating(false);
     }
   };
 
-  const handleTransliterate = (e) => {
-    const input = e.target.value;
-    setTranslitText(input);
-    setText(enableTranslit ? input.replace(/a/g, "अ") : input);
-  };
-
-  const formatText = (tag) => {
-    document.execCommand(tag, false, null);
-  };
-
   const handleCopy = () => {
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(editorContent);
     alert("Copied!");
   };
 
   const handlePrint = () => {
     const printWindow = window.open();
-    printWindow.document.write(`<pre>${text}</pre>`);
+    printWindow.document.write(`<pre>${editorContent}</pre>`);
     printWindow.print();
   };
 
-  const handleClear = () => {
-    setText("");
-    setTranslated("");
-    finalTranscriptSetRef.current.clear();
-  };
-
   const handleDownload = () => {
-    const blob = new Blob([text], { type: "text/plain" });
+    const blob = new Blob([editorContent], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
@@ -165,77 +141,48 @@ const Hero = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleTransliterate = (e) => {
+    const input = e.target.value;
+    setTranslitText(input);
+    const translit = enableTranslit ? input.replace(/a/g, "अ") : input;
+    setEditorContent(translit);
+  };
+
   return (
-    <div className="p-4 bg-white max-w-screen-xl mx-auto">
+    <div className="p-4 max-w-screen-xl mx-auto">
       <div className="flex flex-wrap gap-2 mb-4 justify-start sm:justify-between">
         <button
           onClick={handleCopy}
-          className="px-3 py-1 border rounded-md text-sm font-medium border-gray-400"
+          className="px-3 py-1 border rounded text-sm font-medium border-gray-400"
         >
           Copy
         </button>
         <button
           onClick={handlePrint}
-          className="px-3 py-1 border rounded-md text-sm font-medium border-gray-400"
+          className="px-3 py-1 border rounded text-sm font-medium border-gray-400"
         >
           Print
         </button>
         <button
           onClick={handleDownload}
-          className="px-3 py-1 border rounded-md text-sm font-medium border-gray-400"
+          className="px-3 py-1 border rounded text-sm font-medium border-gray-400"
         >
           Download
         </button>
         <button
-          onClick={handleClear}
-          className="px-3 py-1 border rounded-md text-sm font-medium bg-red-500 text-white"
+          onClick={() => setEditorContent("")}
+          className="px-3 py-1 border rounded text-sm font-medium bg-red-500 text-white"
         >
           Clear
         </button>
       </div>
 
-      <div className="border rounded-md bg-white p-2 mb-4">
-        <div className="flex flex-wrap items-center gap-2 border-b pb-2 mb-2">
-          <div className="flex gap-1">
-            <button
-              onClick={() => formatText("bold")}
-              className="border px-2 py-1 text-sm rounded font-bold"
-            >
-              B
-            </button>
-            <button
-              onClick={() => formatText("italic")}
-              className="border px-2 py-1 text-sm rounded font-bold italic"
-            >
-              I
-            </button>
-            <button
-              onClick={() => formatText("underline")}
-              className="border px-2 py-1 text-sm rounded font-bold underline"
-            >
-              U
-            </button>
-            <button
-              onClick={() => formatText("strikeThrough")}
-              className="border px-2 py-1 text-sm rounded font-bold line-through"
-            >
-              S
-            </button>
-          </div>
-        </div>
-        <div className="relative">
-          <div
-            ref={textAreaRef}
-            contentEditable
-            suppressContentEditableWarning
-            className="w-full min-h-[200px] outline-none text-gray-700 p-2 text-base border border-gray-300 rounded overflow-y-auto z-10 relative bg-white"
-            onInput={(e) => setText(e.currentTarget.textContent)}
-          />
-          {interim && (
-            <div className="text-gray-400 text-sm italic mt-1">{interim}</div>
-          )}
-        </div>
-      </div>
+      <ReactQuill
+        theme="snow"
+        value={editorContent}
+        onChange={setEditorContent}
+        className="mb-6 bg-white"
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
         <div className="border rounded-md p-3 bg-white">
@@ -285,7 +232,6 @@ const Hero = () => {
           >
             {isTranslating ? "Translating..." : "🔁 Translate"}
           </button>
-
           {translated && (
             <div className="mt-3 p-2 bg-gray-100 rounded text-sm text-gray-800">
               <strong className="text-gray-600 block mb-1">
