@@ -37,7 +37,7 @@ const Hero = () => {
   const [isTranslating, setIsTranslating] = useState(false);
   const [enableTranslit, setEnableTranslit] = useState(false);
   const [translitText, setTranslitText] = useState("");
-  const finalTranscriptRef = useRef("");
+  const lastTranscriptRef = useRef("");
 
   const handleSpeech = () => {
     const SpeechRecognition =
@@ -48,34 +48,29 @@ const Hero = () => {
     if (!recognitionRef.current) {
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
+      recognitionRef.current.interimResults = false;
 
       recognitionRef.current.onresult = (event) => {
-        let finalText = "";
+        const result = event.results[event.resultIndex];
+        if (!result.isFinal) return;
 
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const result = event.results[i];
-          let transcript = result[0].transcript.trim();
+        let transcript = result[0].transcript.trim();
 
-          transcript = transcript
-            .replace(/\bfull stop\b/gi, ".")
-            .replace(/\bcomma\b/gi, ",")
-            .replace(/\bquestion mark\b/gi, "?")
-            .replace(/\bexclamation mark\b/gi, "!")
-            .replace(/\bnew line\b/gi, "<br>")
-            .replace(/\bnext paragraph\b/gi, "<br><br>")
-            .replace(/\bcolon\b/gi, ":")
-            .replace(/\bsemicolon\b/gi, ";");
+        transcript = transcript
+          .replace(/\bfull stop\b/gi, ".")
+          .replace(/\bcomma\b/gi, ",")
+          .replace(/\bquestion mark\b/gi, "?")
+          .replace(/\bexclamation mark\b/gi, "!")
+          .replace(/\bnew line\b/gi, "<br>")
+          .replace(/\bnext paragraph\b/gi, "<br><br>")
+          .replace(/\bcolon\b/gi, ":")
+          .replace(/\bsemicolon\b/gi, ";");
 
-          if (result.isFinal) {
-            if (!finalTranscriptRef.current.includes(transcript)) {
-              finalTranscriptRef.current += transcript + " ";
-              finalText += transcript + " ";
-            }
-          }
+        // avoid re-appending duplicate full transcripts
+        if (transcript !== lastTranscriptRef.current) {
+          setEditorContent((prev) => prev + transcript + " ");
+          lastTranscriptRef.current = transcript;
         }
-
-        setEditorContent((prev) => prev + finalText);
       };
 
       recognitionRef.current.onerror = (event) => {
@@ -96,7 +91,7 @@ const Hero = () => {
     recognitionRef.current.lang = speechLang;
 
     if (!listening) {
-      finalTranscriptRef.current = "";
+      lastTranscriptRef.current = "";
       recognitionRef.current.start();
       setListening(true);
     } else {
