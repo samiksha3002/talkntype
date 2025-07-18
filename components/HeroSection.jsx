@@ -37,6 +37,7 @@ const Hero = () => {
   const [isTranslating, setIsTranslating] = useState(false);
   const [enableTranslit, setEnableTranslit] = useState(false);
   const [translitText, setTranslitText] = useState("");
+  const finalTranscriptRef = useRef("");
 
   const handleSpeech = () => {
     const SpeechRecognition =
@@ -50,7 +51,6 @@ const Hero = () => {
       recognitionRef.current.interimResults = true;
 
       recognitionRef.current.onresult = (event) => {
-        let interim = "";
         let finalText = "";
 
         for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -68,9 +68,10 @@ const Hero = () => {
             .replace(/\bsemicolon\b/gi, ";");
 
           if (result.isFinal) {
-            finalText += transcript + " ";
-          } else {
-            interim += transcript;
+            if (!finalTranscriptRef.current.includes(transcript)) {
+              finalTranscriptRef.current += transcript + " ";
+              finalText += transcript + " ";
+            }
           }
         }
 
@@ -95,6 +96,7 @@ const Hero = () => {
     recognitionRef.current.lang = speechLang;
 
     if (!listening) {
+      finalTranscriptRef.current = "";
       recognitionRef.current.start();
       setListening(true);
     } else {
