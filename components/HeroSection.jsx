@@ -1,119 +1,175 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 
-const HeroSection = () => {
+const Hero = () => {
   const [text, setText] = useState("");
-  const [language, setLanguage] = useState("Marathi");
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef(null);
+
+  const handleSpeech = () => {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert("Speech Recognition is not supported in this browser.");
+      return;
+    }
+
+    if (!recognitionRef.current) {
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = "en-IN";
+
+      recognitionRef.current.onresult = (event) => {
+        let interimTranscript = "";
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            setText((prev) => prev + transcript + " ");
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error("Speech recognition error", event.error);
+      };
+    }
+
+    if (listening) {
+      recognitionRef.current.stop();
+      setListening(false);
+    } else {
+      recognitionRef.current.start();
+      setListening(true);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6 font-sans">
-      {/* Toolbar */}
-      <div className="flex flex-wrap gap-2 justify-start mb-4">
-        {["🕘 History", "📋 Copy", "🖨 Print", "🧹 Clear"].map((item, i) => (
-          <button
-            key={i}
-            className="px-4 py-2 text-sm bg-white rounded shadow hover:bg-gray-200 transition"
-          >
-            {item}
-          </button>
-        ))}
+    <div className="p-4 bg-white">
+      {/* Buttons */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {["Content History", "Chat with AI", "Copy", "Print", "Clear"].map(
+          (label, idx) => (
+            <button
+              key={idx}
+              className={`px-3 py-1 border rounded-md text-sm font-medium ${
+                label === "Fix Grammar"
+                  ? "bg-green-500 text-white"
+                  : label === "Clear"
+                  ? "bg-red-500 text-white"
+                  : "border-gray-400"
+              }`}
+            >
+              {label}
+            </button>
+          )
+        )}
       </div>
 
-      {/* Text Editor */}
-      <div className="bg-white p-4 rounded shadow-md mb-6">
-        <div className="mb-3 flex items-center flex-wrap gap-2 text-sm">
-          <select className="border px-2 py-1 rounded">
+      {/* Editor */}
+      <div className="border rounded-md bg-white p-2 mb-4">
+        <div className="flex flex-wrap items-center gap-2 border-b pb-2 mb-2">
+          <select className="border px-2 py-1 text-sm rounded">
             <option>Sans Serif</option>
-            <option>Serif</option>
-            <option>Monospace</option>
           </select>
-          <select className="border px-2 py-1 rounded">
+          <select className="border px-2 py-1 text-sm rounded">
             <option>Normal</option>
-            <option>Heading</option>
-            <option>Subheading</option>
           </select>
-          <button className="font-bold px-2 py-1 border rounded">B</button>
-          <button className="italic px-2 py-1 border rounded">I</button>
-          <button className="underline px-2 py-1 border rounded">U</button>
-          <button className="line-through px-2 py-1 border rounded">S</button>
+          <div className="flex gap-1">
+            {["B", "I", "U", "S"].map((tool, i) => (
+              <button
+                key={i}
+                className="border px-2 py-1 text-sm rounded font-bold"
+              >
+                {tool}
+              </button>
+            ))}
+            <button className="border px-2 py-1 text-sm rounded">A</button>
+            <button className="border px-2 py-1 text-sm rounded">🖌️</button>
+            <button className="border px-2 py-1 text-sm rounded">x₂</button>
+            <button className="border px-2 py-1 text-sm rounded">x²</button>
+            <button className="border px-2 py-1 text-sm rounded">H₁</button>
+            <button className="border px-2 py-1 text-sm rounded">H₂</button>
+            <button className="border px-2 py-1 text-sm rounded">{"<>"}</button>
+            <button className="border px-2 py-1 text-sm rounded">•••</button>
+            <button className="border px-2 py-1 text-sm rounded">🔗</button>
+            <button className="border px-2 py-1 text-sm rounded">𝑥</button>
+          </div>
         </div>
+
         <textarea
-          rows={5}
+          rows="10"
+          className="w-full border-none outline-none text-gray-600 text-base placeholder:text-gray-400"
+          placeholder="Start speaking or typing here..."
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Type here..."
-          className="w-full border rounded px-3 py-2 text-lg focus:outline-none resize-none"
-        />
+        ></textarea>
       </div>
 
-      {/* Bottom Grid Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Bottom Grid */}
+      <div className="grid grid-cols-4 gap-4 text-sm">
         {/* Speech Input */}
-        <div className="bg-white p-4 rounded shadow-md">
-          <h3 className="font-semibold mb-2">🎙️ Speech Input</h3>
-          <label className="block text-sm mb-1">Select Language</label>
+        <div className="border rounded-md p-3 bg-white">
+          <h3 className="font-semibold mb-2">SPEECH INPUT</h3>
+          <label className="block mb-1 text-gray-600">Dictation Language</label>
           <select
-            className="w-full border rounded px-2 py-1 mb-3"
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
+            className="w-full border p-1 rounded mb-2"
+            defaultValue="English (India)"
           >
-            <option>मराठी (Marathi)</option>
-            <option>हिंदी (Hindi)</option>
-            <option>English</option>
+            <option>English (India)</option>
           </select>
-          <button className="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 transition">
-            Start Listening
+          <button
+            className={`w-full ${
+              listening ? "bg-red-500" : "bg-purple-600"
+            } text-white py-1 rounded`}
+            onClick={handleSpeech}
+          >
+            {listening ? "🛑 Stop Listening" : "🎤 Start Listening"}
           </button>
         </div>
 
         {/* Translation */}
-        <div className="bg-white p-4 rounded shadow-md">
-          <h3 className="font-semibold mb-2">🌐 Translation</h3>
-          <label className="block text-sm mb-1">Translate To</label>
-          <select className="w-full border rounded px-2 py-1 mb-3">
-            <option>Marathi</option>
-            <option>Hindi</option>
+        <div className="border rounded-md p-3 bg-white">
+          <h3 className="font-semibold mb-2">TRANSLATION</h3>
+          <label className="block mb-1 text-gray-600">
+            Translate Editor Text To
+          </label>
+          <select className="w-full border p-1 rounded mb-2">
             <option>English</option>
           </select>
-          <button className="w-full bg-indigo-600 text-white py-2 rounded hover:bg-purple-700 transition">
-            Translate
-          </button>
+          <button className="w-full border py-1 rounded">🔁 Translate</button>
         </div>
 
         {/* Transliteration */}
-        <div className="bg-white p-4 rounded shadow-md">
-          <h3 className="font-semibold mb-2">🔤 Transliterate</h3>
-          <label className="block text-sm mb-1">From English To</label>
-          <select className="w-full border rounded px-2 py-1 mb-3">
-            <option>Russian</option>
-            <option>Arabic</option>
-            <option>Devanagari</option>
+        <div className="border rounded-md p-3 bg-white">
+          <h3 className="font-semibold mb-2">TRANSLITERATE</h3>
+          <label className="block mb-1 text-gray-600">
+            Transliterate From English To
+          </label>
+          <select className="w-full border p-1 rounded mb-2">
+            <option>Hindi</option>
           </select>
-          <button className="w-full bg-indigo-600 text-white py-2 rounded hover:bg-pink-700 transition">
-            Start Transliteration
-          </button>
+          <button className="w-full border py-1 rounded">Enable</button>
         </div>
 
         {/* Font Conversion */}
-        <div className="bg-white p-4 rounded shadow-md">
-          <h3 className="font-semibold mb-3">🅰 Font Conversion</h3>
-          <div className="flex flex-wrap gap-2">
-            {["To KrutiDev", "To Preeti", "To Shree", "To Shivaji"].map(
-              (btn, i) => (
-                <button
-                  key={i}
-                  className="bg-indigo-600 text-white px-3 py-2 rounded hover:bg-blue-600 text-sm transition"
-                >
-                  {btn}
-                </button>
-              )
-            )}
-          </div>
+        <div className="border rounded-md p-3 bg-white">
+          <h3 className="font-semibold mb-2">FONT CONVERSION</h3>
+          {["To KrutiDev", "To Preeti", "To Shree", "To Shivaji"].map(
+            (btn, i) => (
+              <button key={i} className="border w-full py-1 mb-2 rounded">
+                {btn}
+              </button>
+            )
+          )}
         </div>
       </div>
     </div>
   );
 };
 
-export default HeroSection;
+export default Hero;
