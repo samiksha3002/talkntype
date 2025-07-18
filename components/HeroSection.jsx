@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 
 const languages = [
   { name: "English (India)", code: "en-IN" },
@@ -37,12 +37,6 @@ const Hero = () => {
   const [translitText, setTranslitText] = useState("");
   const [enableTranslit, setEnableTranslit] = useState(false);
 
-  useEffect(() => {
-    if (textAreaRef.current && !listening) {
-      textAreaRef.current.innerText = text;
-    }
-  }, [text, listening]);
-
   const handleSpeech = () => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -60,17 +54,17 @@ const Hero = () => {
 
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           const result = event.results[i];
-          let transcript = result[0].transcript.trim();
+          let transcript = result[0].transcript.trim().toLowerCase();
 
           transcript = transcript
-            .replace(/\bfull stop\b/gi, ".")
-            .replace(/\bcomma\b/gi, ",")
-            .replace(/\bquestion mark\b/gi, "?")
-            .replace(/\bexclamation mark\b/gi, "!")
-            .replace(/\bnew line\b/gi, "\n")
-            .replace(/\bnext paragraph\b/gi, "\n\n")
-            .replace(/\bcolon\b/gi, ":")
-            .replace(/\bsemicolon\b/gi, ";");
+            .replace(/\bfull stop\b/g, ".")
+            .replace(/\bcomma\b/g, ",")
+            .replace(/\bquestion mark\b/g, "?")
+            .replace(/\bexclamation mark\b/g, "!")
+            .replace(/\bnew line\b/g, "\n")
+            .replace(/\bnext paragraph\b/g, "\n\n")
+            .replace(/\bcolon\b/g, ":")
+            .replace(/\bsemicolon\b/g, ";");
 
           if (result.isFinal) {
             if (!finalTranscriptSetRef.current.has(transcript)) {
@@ -140,6 +134,10 @@ const Hero = () => {
     setText(enableTranslit ? input.replace(/a/g, "अ") : input);
   };
 
+  const formatText = (tag) => {
+    document.execCommand(tag, false, null);
+  };
+
   const handleCopy = () => {
     navigator.clipboard.writeText(text);
     alert("Copied!");
@@ -197,16 +195,45 @@ const Hero = () => {
       </div>
 
       <div className="border rounded-md bg-white p-2 mb-4">
+        <div className="flex flex-wrap items-center gap-2 border-b pb-2 mb-2">
+          <div className="flex gap-1">
+            <button
+              onClick={() => formatText("bold")}
+              className="border px-2 py-1 text-sm rounded font-bold"
+            >
+              B
+            </button>
+            <button
+              onClick={() => formatText("italic")}
+              className="border px-2 py-1 text-sm rounded font-bold italic"
+            >
+              I
+            </button>
+            <button
+              onClick={() => formatText("underline")}
+              className="border px-2 py-1 text-sm rounded font-bold underline"
+            >
+              U
+            </button>
+            <button
+              onClick={() => formatText("strikeThrough")}
+              className="border px-2 py-1 text-sm rounded font-bold line-through"
+            >
+              S
+            </button>
+          </div>
+        </div>
         <div className="relative">
           <div
             ref={textAreaRef}
             contentEditable
             suppressContentEditableWarning
-            className="w-full min-h-[200px] outline-none text-gray-700 p-2 text-base border border-gray-300 rounded overflow-y-auto z-10 relative bg-white whitespace-pre-wrap"
-            onInput={(e) => setText(e.currentTarget.innerText)}
-          >
-            {text + interim}
-          </div>
+            className="w-full min-h-[200px] outline-none text-gray-700 p-2 text-base border border-gray-300 rounded overflow-y-auto z-10 relative bg-white"
+            onInput={(e) => setText(e.currentTarget.textContent)}
+          />
+          {interim && (
+            <div className="text-gray-400 text-sm italic mt-1">{interim}</div>
+          )}
         </div>
       </div>
 
@@ -258,6 +285,7 @@ const Hero = () => {
           >
             {isTranslating ? "Translating..." : "🔁 Translate"}
           </button>
+
           {translated && (
             <div className="mt-3 p-2 bg-gray-100 rounded text-sm text-gray-800">
               <strong className="text-gray-600 block mb-1">
