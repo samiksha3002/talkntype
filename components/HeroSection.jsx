@@ -192,10 +192,12 @@ const Hero = () => {
         <div
           ref={textAreaRef}
           contentEditable
+          suppressContentEditableWarning
           className="w-full min-h-[200px] outline-none text-gray-700 p-2 text-base border border-gray-300 rounded"
           onInput={(e) => setText(e.currentTarget.textContent)}
         >
           {text}
+          <span className="text-gray-400">{interim}</span>
         </div>
       </div>
 
