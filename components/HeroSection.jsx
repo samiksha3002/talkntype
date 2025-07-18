@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 
 const languages = [
   { name: "English (India)", code: "en-IN" },
@@ -33,9 +33,16 @@ const Hero = () => {
   const [translateLang, setTranslateLang] = useState("hi");
   const recognitionRef = useRef(null);
   const textAreaRef = useRef(null);
-  const addedTranscriptsRef = useRef(new Set());
+  const finalTranscriptSetRef = useRef(new Set());
   const [translitText, setTranslitText] = useState("");
   const [enableTranslit, setEnableTranslit] = useState(false);
+
+  useEffect(() => {
+    if (!listening) return; // ❌ avoid overwriting while manually typing
+    if (textAreaRef.current) {
+      textAreaRef.current.innerText = text + (interim ? ` ${interim}` : "");
+    }
+  }, [text, interim, listening]);
 
   const handleSpeech = () => {
     const SpeechRecognition =
@@ -53,26 +60,39 @@ const Hero = () => {
 
       recognitionRef.current.onresult = (event) => {
         let interimTranscript = "";
+        let newFinal = false;
 
         for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const transcript = event.results[i][0].transcript.trim();
+          const result = event.results[i];
+          const transcript = result[0].transcript.trim();
 
-          if (event.results[i].isFinal) {
-            if (!addedTranscriptsRef.current.has(transcript)) {
+          if (result.isFinal) {
+            if (!finalTranscriptSetRef.current.has(transcript)) {
               setText((prev) => prev + transcript + " ");
-              addedTranscriptsRef.current.add(transcript);
+              finalTranscriptSetRef.current.add(transcript);
+              newFinal = true;
             }
-            setInterim("");
           } else {
             interimTranscript += transcript;
           }
         }
 
-        setInterim(interimTranscript);
+        if (newFinal) setInterim("");
+        else setInterim(interimTranscript);
       };
 
       recognitionRef.current.onerror = (event) => {
         console.error("Speech recognition error:", event.error);
+      };
+
+      recognitionRef.current.onend = () => {
+        if (listening) {
+          try {
+            recognitionRef.current.start();
+          } catch (e) {
+            console.warn("Restart error:", e);
+          }
+        }
       };
     }
 
@@ -82,10 +102,14 @@ const Hero = () => {
       recognitionRef.current.stop();
       setListening(false);
       setInterim("");
-      addedTranscriptsRef.current.clear();
+      finalTranscriptSetRef.current.clear();
     } else {
-      recognitionRef.current.start();
-      setListening(true);
+      try {
+        recognitionRef.current.start();
+        setListening(true);
+      } catch (err) {
+        console.warn("Recognition already started or cannot be started:", err);
+      }
     }
   };
 
@@ -105,7 +129,7 @@ const Hero = () => {
       if (data.translated) {
         setTranslated(data.translated);
       } else {
-        alert("\u274C No translation received.");
+        alert("❌ No translation received.");
       }
     } catch (err) {
       console.error("Translation error", err);
@@ -115,7 +139,7 @@ const Hero = () => {
     }
   };
 
-  const handleTransliterate = async (e) => {
+  const handleTransliterate = (e) => {
     const input = e.target.value;
     setTranslitText(input);
 
@@ -145,7 +169,7 @@ const Hero = () => {
   const handleClear = () => {
     setText("");
     setTranslated("");
-    addedTranscriptsRef.current.clear();
+    finalTranscriptSetRef.current.clear();
   };
 
   const handleDownload = () => {
@@ -216,16 +240,18 @@ const Hero = () => {
             </button>
           </div>
         </div>
+
         <div
           ref={textAreaRef}
           contentEditable
           suppressContentEditableWarning
-          className="w-full min-h-[200px] outline-none text-gray-700 p-2 text-base border border-gray-300 rounded overflow-y-auto"
-          onInput={(e) => setText(e.currentTarget.textContent)}
-        >
-          {text}
-          <span className="text-gray-400">{interim}</span>
-        </div>
+          className="w-full min-h-[200px] outline-none text-gray-700 p-2 text-base border border-gray-300 rounded overflow-y-auto z-10 relative bg-white"
+          onInput={(e) => {
+            if (!listening) {
+              setText(e.currentTarget.textContent);
+            }
+          }}
+        ></div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
