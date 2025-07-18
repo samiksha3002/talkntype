@@ -130,9 +130,9 @@ const Hero = () => {
   };
 
   return (
-    <div className="p-4 bg-white">
+    <div className="p-4 bg-white max-w-screen-xl mx-auto">
       {/* Top Buttons */}
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-4 justify-start sm:justify-between">
         <button
           onClick={handleCopy}
           className="px-3 py-1 border rounded-md text-sm font-medium border-gray-400"
@@ -193,7 +193,7 @@ const Hero = () => {
           ref={textAreaRef}
           contentEditable
           suppressContentEditableWarning
-          className="w-full min-h-[200px] outline-none text-gray-700 p-2 text-base border border-gray-300 rounded"
+          className="w-full min-h-[200px] outline-none text-gray-700 p-2 text-base border border-gray-300 rounded overflow-y-auto"
           onInput={(e) => setText(e.currentTarget.textContent)}
         >
           {text}
@@ -201,8 +201,8 @@ const Hero = () => {
         </div>
       </div>
 
-      {/* Bottom Grid */}
-      <div className="grid grid-cols-4 gap-4 text-sm">
+      {/* Bottom Grid - Responsive */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
         {/* Speech Input */}
         <div className="border rounded-md p-3 bg-white">
           <h3 className="font-semibold mb-2">SPEECH INPUT</h3>
