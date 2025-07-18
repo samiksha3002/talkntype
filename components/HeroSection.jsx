@@ -38,26 +38,21 @@ const Hero = () => {
   const [enableTranslit, setEnableTranslit] = useState(false);
 
   useEffect(() => {
-    if (textAreaRef.current) {
-      textAreaRef.current.innerText = text + (interim ? ` ${interim}` : "");
+    if (textAreaRef.current && !listening) {
+      textAreaRef.current.innerText = text;
     }
-  }, [text, interim]);
+  }, [text, listening]);
 
   const handleSpeech = () => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      alert("Speech Recognition is not supported in this browser.");
-      return;
-    }
+    if (!SpeechRecognition)
+      return alert("Speech Recognition is not supported in this browser.");
 
     if (!recognitionRef.current) {
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
-
-      let lastTranscript = "";
 
       recognitionRef.current.onresult = (event) => {
         let interimTranscript = "";
@@ -65,28 +60,20 @@ const Hero = () => {
 
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           const result = event.results[i];
-          let transcript = result[0].transcript.trim().toLowerCase();
+          let transcript = result[0].transcript.trim();
 
-          // Replace spoken punctuation with actual symbols
           transcript = transcript
-            .replace(/\bfull stop\b/g, ".")
-            .replace(/\bcomma\b/g, ",")
-            .replace(/\bquestion mark\b/g, "?")
-            .replace(/\bexclamation mark\b/g, "!")
-            .replace(/\bnew line\b/g, "\n")
-            .replace(/\bnext line\b/g, "\n")
-            .replace(/\bnext paragraph\b|\bnew paragraph\b/g, "\n\n")
-            .replace(/\bcolon\b/g, ":")
-            .replace(/\bsemicolon\b/g, ";");
+            .replace(/\bfull stop\b/gi, ".")
+            .replace(/\bcomma\b/gi, ",")
+            .replace(/\bquestion mark\b/gi, "?")
+            .replace(/\bexclamation mark\b/gi, "!")
+            .replace(/\bnew line\b/gi, "\n")
+            .replace(/\bnext paragraph\b/gi, "\n\n")
+            .replace(/\bcolon\b/gi, ":")
+            .replace(/\bsemicolon\b/gi, ";");
 
           if (result.isFinal) {
-            // Avoid duplicate lines on Android
-            if (
-              transcript &&
-              transcript !== lastTranscript &&
-              !finalTranscriptSetRef.current.has(transcript)
-            ) {
-              lastTranscript = transcript;
+            if (!finalTranscriptSetRef.current.has(transcript)) {
               setText((prev) => prev + transcript + " ");
               finalTranscriptSetRef.current.add(transcript);
               newFinal = true;
@@ -95,12 +82,8 @@ const Hero = () => {
             interimTranscript += transcript;
           }
         }
-
-        if (newFinal) {
-          setInterim("");
-        } else {
-          setInterim(interimTranscript);
-        }
+        if (newFinal) setInterim("");
+        else setInterim(interimTranscript);
       };
 
       recognitionRef.current.onerror = (event) => {
@@ -110,7 +93,7 @@ const Hero = () => {
       recognitionRef.current.onend = () => {
         if (listening) {
           try {
-            recognitionRef.current.start(); // Restart only if listening
+            recognitionRef.current.start();
           } catch (e) {
             console.warn("Restart error:", e);
           }
@@ -127,8 +110,7 @@ const Hero = () => {
       recognitionRef.current.start();
     } else {
       setListening(false);
-      recognitionRef.current.abort(); // Use abort for a clean stop
-      setInterim("");
+      recognitionRef.current.stop();
     }
   };
 
@@ -156,10 +138,6 @@ const Hero = () => {
     const input = e.target.value;
     setTranslitText(input);
     setText(enableTranslit ? input.replace(/a/g, "अ") : input);
-  };
-
-  const formatText = (tag) => {
-    document.execCommand(tag, false, null);
   };
 
   const handleCopy = () => {
@@ -219,43 +197,16 @@ const Hero = () => {
       </div>
 
       <div className="border rounded-md bg-white p-2 mb-4">
-        <div className="flex flex-wrap items-center gap-2 border-b pb-2 mb-2">
-          <div className="flex gap-1">
-            <button
-              onClick={() => formatText("bold")}
-              className="border px-2 py-1 text-sm rounded font-bold"
-            >
-              B
-            </button>
-            <button
-              onClick={() => formatText("italic")}
-              className="border px-2 py-1 text-sm rounded font-bold italic"
-            >
-              I
-            </button>
-            <button
-              onClick={() => formatText("underline")}
-              className="border px-2 py-1 text-sm rounded font-bold underline"
-            >
-              U
-            </button>
-            <button
-              onClick={() => formatText("strikeThrough")}
-              className="border px-2 py-1 text-sm rounded font-bold line-through"
-            >
-              S
-            </button>
-          </div>
-        </div>
-
         <div className="relative">
           <div
             ref={textAreaRef}
             contentEditable
             suppressContentEditableWarning
-            className="w-full min-h-[200px] outline-none text-gray-700 p-2 text-base border border-gray-300 rounded overflow-y-auto z-10 relative bg-white"
-            onInput={(e) => setText(e.currentTarget.textContent)}
-          ></div>
+            className="w-full min-h-[200px] outline-none text-gray-700 p-2 text-base border border-gray-300 rounded overflow-y-auto z-10 relative bg-white whitespace-pre-wrap"
+            onInput={(e) => setText(e.currentTarget.innerText)}
+          >
+            {text + interim}
+          </div>
         </div>
       </div>
 
@@ -307,7 +258,6 @@ const Hero = () => {
           >
             {isTranslating ? "Translating..." : "🔁 Translate"}
           </button>
-
           {translated && (
             <div className="mt-3 p-2 bg-gray-100 rounded text-sm text-gray-800">
               <strong className="text-gray-600 block mb-1">
@@ -351,13 +301,13 @@ const Hero = () => {
 
         <div className="border rounded-md p-3 bg-white">
           <h3 className="font-semibold mb-2">FONT CONVERSION</h3>
-          {["To KrutiDev", "To Preeti", "To Shree", "To Shivaji"].map(
-            (btn, i) => (
+          {"To KrutiDev|To Preeti|To Shree|To Shivaji"
+            .split("|")
+            .map((btn, i) => (
               <button key={i} className="border w-full py-1 mb-2 rounded">
                 {btn}
               </button>
-            )
-          )}
+            ))}
         </div>
       </div>
     </div>
