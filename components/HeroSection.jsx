@@ -38,11 +38,10 @@ const Hero = () => {
   const [enableTranslit, setEnableTranslit] = useState(false);
 
   useEffect(() => {
-    if (!listening) return; // ❌ avoid overwriting while manually typing
     if (textAreaRef.current) {
       textAreaRef.current.innerText = text + (interim ? ` ${interim}` : "");
     }
-  }, [text, interim, listening]);
+  }, [text, interim]);
 
   const handleSpeech = () => {
     const SpeechRecognition =
@@ -64,7 +63,18 @@ const Hero = () => {
 
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           const result = event.results[i];
-          const transcript = result[0].transcript.trim();
+          let transcript = result[0].transcript.trim().toLowerCase();
+
+          // Replace spoken commands with actual punctuation
+          transcript = transcript
+            .replace(/\bfull stop\b/g, ".")
+            .replace(/\bcomma\b/g, ",")
+            .replace(/\bquestion mark\b/g, "?")
+            .replace(/\bexclamation mark\b/g, "!")
+            .replace(/\bnew line\b/g, "\n")
+            .replace(/\bnext paragraph\b/g, "\n\n")
+            .replace(/\bcolon\b/g, ":")
+            .replace(/\bsemicolon\b/g, ";");
 
           if (result.isFinal) {
             if (!finalTranscriptSetRef.current.has(transcript)) {
@@ -87,29 +97,21 @@ const Hero = () => {
 
       recognitionRef.current.onend = () => {
         if (listening) {
-          try {
-            recognitionRef.current.start();
-          } catch (e) {
-            console.warn("Restart error:", e);
-          }
+          recognitionRef.current.start();
         }
       };
     }
 
     recognitionRef.current.lang = speechLang;
 
-    if (listening) {
-      recognitionRef.current.stop();
-      setListening(false);
-      setInterim("");
+    if (!listening) {
+      setListening(true);
       finalTranscriptSetRef.current.clear();
+      setInterim("");
+      recognitionRef.current.start();
     } else {
-      try {
-        recognitionRef.current.start();
-        setListening(true);
-      } catch (err) {
-        console.warn("Recognition already started or cannot be started:", err);
-      }
+      setListening(false);
+      recognitionRef.current.stop();
     }
   };
 
@@ -118,19 +120,13 @@ const Hero = () => {
     try {
       const res = await fetch("/api/translate", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text, to: translateLang }),
       });
 
       const data = await res.json();
-
-      if (data.translated) {
-        setTranslated(data.translated);
-      } else {
-        alert("❌ No translation received.");
-      }
+      if (data.translated) setTranslated(data.translated);
+      else alert("❌ No translation received.");
     } catch (err) {
       console.error("Translation error", err);
       alert("Translation failed. Check console for error.");
@@ -142,13 +138,7 @@ const Hero = () => {
   const handleTransliterate = (e) => {
     const input = e.target.value;
     setTranslitText(input);
-
-    if (enableTranslit) {
-      const output = input.replace(/a/g, "अ");
-      setText(output);
-    } else {
-      setText(input);
-    }
+    setText(enableTranslit ? input.replace(/a/g, "अ") : input);
   };
 
   const formatText = (tag) => {
@@ -241,17 +231,15 @@ const Hero = () => {
           </div>
         </div>
 
-        <div
-          ref={textAreaRef}
-          contentEditable
-          suppressContentEditableWarning
-          className="w-full min-h-[200px] outline-none text-gray-700 p-2 text-base border border-gray-300 rounded overflow-y-auto z-10 relative bg-white"
-          onInput={(e) => {
-            if (!listening) {
-              setText(e.currentTarget.textContent);
-            }
-          }}
-        ></div>
+        <div className="relative">
+          <div
+            ref={textAreaRef}
+            contentEditable
+            suppressContentEditableWarning
+            className="w-full min-h-[200px] outline-none text-gray-700 p-2 text-base border border-gray-300 rounded overflow-y-auto z-10 relative bg-white"
+            onInput={(e) => setText(e.currentTarget.textContent)}
+          ></div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
