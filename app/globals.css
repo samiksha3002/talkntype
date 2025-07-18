@@ -11,9 +11,18 @@ body {
 
 @font-face {
   font-family: "KrutiDev";
-  src: url("/public/KRDEV010.TTF") format("truetype");
+  src: url("/KRDEV010.TTF") format("truetype");
 }
+
 @font-face {
   font-family: "Shivaji";
-  src: url("/public/Shivaji01.ttf") format("truetype");
+  src: url("/Shivaji01.ttf") format("truetype");
+}
+
+.krutidev {
+  font-family: "KrutiDev", sans-serif;
+}
+
+.shivaji {
+  font-family: "Shivaji", sans-serif;
 }

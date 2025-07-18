@@ -38,6 +38,9 @@ const Hero = () => {
   const [enableTranslit, setEnableTranslit] = useState(false);
   const [translitText, setTranslitText] = useState("");
   const lastTranscriptRef = useRef("");
+  const [selectedFont, setSelectedFont] = useState("default");
+  const [popupFont, setPopupFont] = useState("");
+  const [showPopup, setShowPopup] = useState(false);
 
   const handleSpeech = () => {
     const SpeechRecognition =
@@ -66,7 +69,6 @@ const Hero = () => {
           .replace(/\bcolon\b/gi, ":")
           .replace(/\bsemicolon\b/gi, ";");
 
-        // avoid re-appending duplicate full transcripts
         if (transcript !== lastTranscriptRef.current) {
           setEditorContent((prev) => prev + transcript + " ");
           lastTranscriptRef.current = transcript;
@@ -145,8 +147,40 @@ const Hero = () => {
     setEditorContent(translit);
   };
 
+  const openFontPopup = (fontName) => {
+    setPopupFont(fontName);
+    setShowPopup(true);
+  };
+
+  const closePopup = () => {
+    setShowPopup(false);
+  };
+
   return (
-    <div className="p-4 max-w-screen-xl mx-auto">
+    <div className="p-4 max-w-screen-xl mx-auto relative">
+      {showPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded shadow-lg max-w-2xl w-full">
+            <h2 className="text-xl font-semibold mb-4">
+              {popupFont} Unicode Preview
+            </h2>
+            <p
+              className={`text-lg border p-4 rounded h-60 overflow-auto ${popupFont.toLowerCase()}`}
+            >
+              {editorContent}
+            </p>
+            <div className="text-right mt-4">
+              <button
+                onClick={closePopup}
+                className="px-4 py-2 bg-blue-600 text-white rounded"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2 mb-4 justify-start sm:justify-between">
         <button
           onClick={handleCopy}
@@ -178,7 +212,7 @@ const Hero = () => {
         theme="snow"
         value={editorContent}
         onChange={setEditorContent}
-        className="mb-6 bg-white"
+        className={`mb-6 bg-white ${selectedFont}`}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
@@ -272,13 +306,15 @@ const Hero = () => {
 
         <div className="border rounded-md p-3 bg-white">
           <h3 className="font-semibold mb-2">FONT CONVERSION</h3>
-          {"To KrutiDev|To Preeti|To Shree|To Shivaji"
-            .split("|")
-            .map((btn, i) => (
-              <button key={i} className="border w-full py-1 mb-2 rounded">
-                {btn}
-              </button>
-            ))}
+          {["krutidev", "shivaji"].map((font, i) => (
+            <button
+              key={i}
+              onClick={() => openFontPopup(font)}
+              className="border w-full py-1 mb-2 rounded bg-gray-50 hover:bg-gray-100"
+            >
+              Show {font} Unicode Preview
+            </button>
+          ))}
         </div>
       </div>
     </div>
