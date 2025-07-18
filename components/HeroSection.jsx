@@ -57,6 +57,8 @@ const Hero = () => {
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
 
+      let lastTranscript = "";
+
       recognitionRef.current.onresult = (event) => {
         let interimTranscript = "";
         let newFinal = false;
@@ -65,19 +67,26 @@ const Hero = () => {
           const result = event.results[i];
           let transcript = result[0].transcript.trim().toLowerCase();
 
-          // Replace spoken commands with actual punctuation
+          // Replace spoken punctuation with actual symbols
           transcript = transcript
             .replace(/\bfull stop\b/g, ".")
             .replace(/\bcomma\b/g, ",")
             .replace(/\bquestion mark\b/g, "?")
             .replace(/\bexclamation mark\b/g, "!")
             .replace(/\bnew line\b/g, "\n")
-            .replace(/\bnext paragraph\b/g, "\n\n")
+            .replace(/\bnext line\b/g, "\n")
+            .replace(/\bnext paragraph\b|\bnew paragraph\b/g, "\n\n")
             .replace(/\bcolon\b/g, ":")
             .replace(/\bsemicolon\b/g, ";");
 
           if (result.isFinal) {
-            if (!finalTranscriptSetRef.current.has(transcript)) {
+            // Avoid duplicate lines on Android
+            if (
+              transcript &&
+              transcript !== lastTranscript &&
+              !finalTranscriptSetRef.current.has(transcript)
+            ) {
+              lastTranscript = transcript;
               setText((prev) => prev + transcript + " ");
               finalTranscriptSetRef.current.add(transcript);
               newFinal = true;
@@ -87,8 +96,11 @@ const Hero = () => {
           }
         }
 
-        if (newFinal) setInterim("");
-        else setInterim(interimTranscript);
+        if (newFinal) {
+          setInterim("");
+        } else {
+          setInterim(interimTranscript);
+        }
       };
 
       recognitionRef.current.onerror = (event) => {
@@ -97,7 +109,11 @@ const Hero = () => {
 
       recognitionRef.current.onend = () => {
         if (listening) {
-          recognitionRef.current.start();
+          try {
+            recognitionRef.current.start(); // Restart only if listening
+          } catch (e) {
+            console.warn("Restart error:", e);
+          }
         }
       };
     }
@@ -111,7 +127,8 @@ const Hero = () => {
       recognitionRef.current.start();
     } else {
       setListening(false);
-      recognitionRef.current.stop();
+      recognitionRef.current.abort(); // Use abort for a clean stop
+      setInterim("");
     }
   };
 
