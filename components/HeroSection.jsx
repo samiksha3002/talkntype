@@ -33,7 +33,7 @@ const Hero = () => {
   const [translateLang, setTranslateLang] = useState("hi");
   const recognitionRef = useRef(null);
   const textAreaRef = useRef(null);
-  const lastFinalRef = useRef("");
+  const addedTranscriptsRef = useRef(new Set());
   const [translitText, setTranslitText] = useState("");
   const [enableTranslit, setEnableTranslit] = useState(false);
 
@@ -58,9 +58,9 @@ const Hero = () => {
           const transcript = event.results[i][0].transcript.trim();
 
           if (event.results[i].isFinal) {
-            if (transcript !== lastFinalRef.current) {
+            if (!addedTranscriptsRef.current.has(transcript)) {
               setText((prev) => prev + transcript + " ");
-              lastFinalRef.current = transcript;
+              addedTranscriptsRef.current.add(transcript);
             }
             setInterim("");
           } else {
@@ -82,7 +82,7 @@ const Hero = () => {
       recognitionRef.current.stop();
       setListening(false);
       setInterim("");
-      lastFinalRef.current = "";
+      addedTranscriptsRef.current.clear();
     } else {
       recognitionRef.current.start();
       setListening(true);
@@ -120,7 +120,6 @@ const Hero = () => {
     setTranslitText(input);
 
     if (enableTranslit) {
-      // NOTE: Dummy transliteration logic, you must integrate a proper one
       const output = input.replace(/a/g, "अ");
       setText(output);
     } else {
@@ -146,6 +145,7 @@ const Hero = () => {
   const handleClear = () => {
     setText("");
     setTranslated("");
+    addedTranscriptsRef.current.clear();
   };
 
   const handleDownload = () => {
