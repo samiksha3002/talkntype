@@ -25,7 +25,7 @@ const languages = [
 
 const Hero = () => {
   const [text, setText] = useState("");
-  const [interim, setInterim] = useState(""); // ✅ Moved inside component
+  const [interim, setInterim] = useState("");
   const [listening, setListening] = useState(false);
   const [translated, setTranslated] = useState("");
   const [isTranslating, setIsTranslating] = useState(false);
@@ -33,7 +33,9 @@ const Hero = () => {
   const [translateLang, setTranslateLang] = useState("hi");
   const recognitionRef = useRef(null);
   const textAreaRef = useRef(null);
-  const lastFinalRef = useRef(""); // Track last final transcript
+  const lastFinalRef = useRef("");
+  const [translitText, setTranslitText] = useState("");
+  const [enableTranslit, setEnableTranslit] = useState(false);
 
   const handleSpeech = () => {
     const SpeechRecognition =
@@ -60,13 +62,13 @@ const Hero = () => {
               setText((prev) => prev + transcript + " ");
               lastFinalRef.current = transcript;
             }
-            setInterim(""); // Clear interim
+            setInterim("");
           } else {
             interimTranscript += transcript;
           }
         }
 
-        setInterim(interimTranscript); // Live update
+        setInterim(interimTranscript);
       };
 
       recognitionRef.current.onerror = (event) => {
@@ -80,12 +82,13 @@ const Hero = () => {
       recognitionRef.current.stop();
       setListening(false);
       setInterim("");
-      lastFinalRef.current = ""; // Reset last transcript when stopping
+      lastFinalRef.current = "";
     } else {
       recognitionRef.current.start();
       setListening(true);
     }
   };
+
   const handleTranslate = async () => {
     setIsTranslating(true);
     try {
@@ -96,14 +99,32 @@ const Hero = () => {
         },
         body: JSON.stringify({ text, to: translateLang }),
       });
+
       const data = await res.json();
+
       if (data.translated) {
         setTranslated(data.translated);
+      } else {
+        alert("\u274C No translation received.");
       }
     } catch (err) {
       console.error("Translation error", err);
+      alert("Translation failed. Check console for error.");
     } finally {
       setIsTranslating(false);
+    }
+  };
+
+  const handleTransliterate = async (e) => {
+    const input = e.target.value;
+    setTranslitText(input);
+
+    if (enableTranslit) {
+      // NOTE: Dummy transliteration logic, you must integrate a proper one
+      const output = input.replace(/a/g, "अ");
+      setText(output);
+    } else {
+      setText(input);
     }
   };
 
@@ -139,7 +160,6 @@ const Hero = () => {
 
   return (
     <div className="p-4 bg-white max-w-screen-xl mx-auto">
-      {/* Top Buttons */}
       <div className="flex flex-wrap gap-2 mb-4 justify-start sm:justify-between">
         <button
           onClick={handleCopy}
@@ -167,7 +187,6 @@ const Hero = () => {
         </button>
       </div>
 
-      {/* Editor */}
       <div className="border rounded-md bg-white p-2 mb-4">
         <div className="flex flex-wrap items-center gap-2 border-b pb-2 mb-2">
           <div className="flex gap-1">
@@ -209,9 +228,7 @@ const Hero = () => {
         </div>
       </div>
 
-      {/* Bottom Grid - Responsive */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-        {/* Speech Input */}
         <div className="border rounded-md p-3 bg-white">
           <h3 className="font-semibold mb-2">SPEECH INPUT</h3>
           <label className="block mb-1 text-gray-600">Dictation Language</label>
@@ -227,16 +244,15 @@ const Hero = () => {
             ))}
           </select>
           <button
+            onClick={handleSpeech}
             className={`w-full ${
               listening ? "bg-red-500" : "bg-blue-600"
             } text-white py-1 rounded`}
-            onClick={handleSpeech}
           >
             {listening ? "🛑 Stop Listening" : "🎤 Start Listening"}
           </button>
         </div>
 
-        {/* Translation */}
         <div className="border rounded-md p-3 bg-white">
           <h3 className="font-semibold mb-2">TRANSLATION</h3>
           <label className="block mb-1 text-gray-600">
@@ -254,32 +270,54 @@ const Hero = () => {
             ))}
           </select>
           <button
-            className="w-full border py-1 rounded"
+            className="w-full border py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
             onClick={handleTranslate}
             disabled={isTranslating}
           >
             {isTranslating ? "Translating..." : "🔁 Translate"}
           </button>
+
           {translated && (
-            <div className="mt-2 p-2 bg-gray-100 rounded text-sm">
-              <strong>Translated:</strong> {translated}
+            <div className="mt-3 p-2 bg-gray-100 rounded text-sm text-gray-800">
+              <strong className="text-gray-600 block mb-1">
+                Translated Output:
+              </strong>
+              {translated}
             </div>
           )}
         </div>
 
-        {/* Transliteration */}
-        <div className="border rounded-md p-3 bg-white">
+        <div className="border rounded-md p-3 bg-white col-span-1">
           <h3 className="font-semibold mb-2">TRANSLITERATE</h3>
           <label className="block mb-1 text-gray-600">
             Transliterate From English To
           </label>
-          <select className="w-full border p-1 rounded mb-2">
-            <option>Hindi</option>
+          <select
+            className="w-full border p-1 rounded mb-2"
+            value="hi"
+            disabled
+          >
+            <option value="hi">Hindi</option>
           </select>
-          <button className="w-full border py-1 rounded">Enable</button>
+          <label className="inline-flex items-center space-x-2 mb-2">
+            <input
+              type="checkbox"
+              checked={enableTranslit}
+              onChange={() => setEnableTranslit(!enableTranslit)}
+            />
+            <span className="text-sm text-gray-700">
+              Enable Transliteration
+            </span>
+          </label>
+          <input
+            type="text"
+            className="w-full border p-2 rounded"
+            placeholder="Type in English"
+            value={translitText}
+            onChange={handleTransliterate}
+          />
         </div>
 
-        {/* Font Conversion */}
         <div className="border rounded-md p-3 bg-white">
           <h3 className="font-semibold mb-2">FONT CONVERSION</h3>
           {["To KrutiDev", "To Preeti", "To Shree", "To Shivaji"].map(
