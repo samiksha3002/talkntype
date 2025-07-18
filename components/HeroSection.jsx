@@ -33,6 +33,8 @@ const Hero = () => {
   const [translateLang, setTranslateLang] = useState("hi");
   const recognitionRef = useRef(null);
   const textAreaRef = useRef(null);
+  const lastFinalRef = useRef(""); // Track last final transcript
+
   const handleSpeech = () => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -49,16 +51,22 @@ const Hero = () => {
 
       recognitionRef.current.onresult = (event) => {
         let interimTranscript = "";
+
         for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const transcript = event.results[i][0].transcript;
+          const transcript = event.results[i][0].transcript.trim();
+
           if (event.results[i].isFinal) {
-            setText((prev) => prev + transcript + " ");
-            setInterim(""); // Clear interim on final result
+            if (transcript !== lastFinalRef.current) {
+              setText((prev) => prev + transcript + " ");
+              lastFinalRef.current = transcript;
+            }
+            setInterim(""); // Clear interim
           } else {
             interimTranscript += transcript;
           }
         }
-        setInterim(interimTranscript); // Live update while speaking
+
+        setInterim(interimTranscript); // Live update
       };
 
       recognitionRef.current.onerror = (event) => {
@@ -71,13 +79,13 @@ const Hero = () => {
     if (listening) {
       recognitionRef.current.stop();
       setListening(false);
-      setInterim(""); // Clear interim when stopping
+      setInterim("");
+      lastFinalRef.current = ""; // Reset last transcript when stopping
     } else {
       recognitionRef.current.start();
       setListening(true);
     }
   };
-
   const handleTranslate = async () => {
     setIsTranslating(true);
     try {
