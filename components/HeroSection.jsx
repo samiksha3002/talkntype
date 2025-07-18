@@ -2,11 +2,37 @@
 
 import React, { useState, useRef } from "react";
 
+const languages = [
+  { name: "English (India)", code: "en-IN" },
+  { name: "Hindi", code: "hi" },
+  { name: "Marathi", code: "mr" },
+  { name: "Bengali", code: "bn" },
+  { name: "Gujarati", code: "gu" },
+  { name: "Tamil", code: "ta" },
+  { name: "Telugu", code: "te" },
+  { name: "Kannada", code: "kn" },
+  { name: "Malayalam", code: "ml" },
+  { name: "Punjabi", code: "pa" },
+  { name: "Urdu", code: "ur" },
+  { name: "Spanish", code: "es" },
+  { name: "French", code: "fr" },
+  { name: "German", code: "de" },
+  { name: "Chinese (Simplified)", code: "zh-CN" },
+  { name: "Japanese", code: "ja" },
+  { name: "Russian", code: "ru" },
+  { name: "Arabic", code: "ar" },
+];
+
 const Hero = () => {
   const [text, setText] = useState("");
+  const [interim, setInterim] = useState(""); // ✅ Moved inside component
   const [listening, setListening] = useState(false);
+  const [translated, setTranslated] = useState("");
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [speechLang, setSpeechLang] = useState("en-IN");
+  const [translateLang, setTranslateLang] = useState("hi");
   const recognitionRef = useRef(null);
-
+  const textAreaRef = useRef(null);
   const handleSpeech = () => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -20,7 +46,6 @@ const Hero = () => {
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = "en-IN";
 
       recognitionRef.current.onresult = (event) => {
         let interimTranscript = "";
@@ -28,86 +53,150 @@ const Hero = () => {
           const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
             setText((prev) => prev + transcript + " ");
+            setInterim(""); // Clear interim on final result
           } else {
             interimTranscript += transcript;
           }
         }
+        setInterim(interimTranscript); // Live update while speaking
       };
 
       recognitionRef.current.onerror = (event) => {
-        console.error("Speech recognition error", event.error);
+        console.error("Speech recognition error:", event.error);
       };
     }
+
+    recognitionRef.current.lang = speechLang;
 
     if (listening) {
       recognitionRef.current.stop();
       setListening(false);
+      setInterim(""); // Clear interim when stopping
     } else {
       recognitionRef.current.start();
       setListening(true);
     }
   };
 
+  const handleTranslate = async () => {
+    setIsTranslating(true);
+    try {
+      const res = await fetch("/api/translate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text, to: translateLang }),
+      });
+      const data = await res.json();
+      if (data.translated) {
+        setTranslated(data.translated);
+      }
+    } catch (err) {
+      console.error("Translation error", err);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  const formatText = (tag) => {
+    document.execCommand(tag, false, null);
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    alert("Copied!");
+  };
+
+  const handlePrint = () => {
+    const printWindow = window.open();
+    printWindow.document.write(`<pre>${text}</pre>`);
+    printWindow.print();
+  };
+
+  const handleClear = () => {
+    setText("");
+    setTranslated("");
+  };
+
+  const handleDownload = () => {
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "content.txt";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="p-4 bg-white">
-      {/* Buttons */}
+      {/* Top Buttons */}
       <div className="flex flex-wrap gap-2 mb-4">
-        {["Content History", "Chat with AI", "Copy", "Print", "Clear"].map(
-          (label, idx) => (
-            <button
-              key={idx}
-              className={`px-3 py-1 border rounded-md text-sm font-medium ${
-                label === "Fix Grammar"
-                  ? "bg-green-500 text-white"
-                  : label === "Clear"
-                  ? "bg-red-500 text-white"
-                  : "border-gray-400"
-              }`}
-            >
-              {label}
-            </button>
-          )
-        )}
+        <button
+          onClick={handleCopy}
+          className="px-3 py-1 border rounded-md text-sm font-medium border-gray-400"
+        >
+          Copy
+        </button>
+        <button
+          onClick={handlePrint}
+          className="px-3 py-1 border rounded-md text-sm font-medium border-gray-400"
+        >
+          Print
+        </button>
+        <button
+          onClick={handleDownload}
+          className="px-3 py-1 border rounded-md text-sm font-medium border-gray-400"
+        >
+          Download
+        </button>
+        <button
+          onClick={handleClear}
+          className="px-3 py-1 border rounded-md text-sm font-medium bg-red-500 text-white"
+        >
+          Clear
+        </button>
       </div>
 
       {/* Editor */}
       <div className="border rounded-md bg-white p-2 mb-4">
         <div className="flex flex-wrap items-center gap-2 border-b pb-2 mb-2">
-          <select className="border px-2 py-1 text-sm rounded">
-            <option>Sans Serif</option>
-          </select>
-          <select className="border px-2 py-1 text-sm rounded">
-            <option>Normal</option>
-          </select>
           <div className="flex gap-1">
-            {["B", "I", "U", "S"].map((tool, i) => (
-              <button
-                key={i}
-                className="border px-2 py-1 text-sm rounded font-bold"
-              >
-                {tool}
-              </button>
-            ))}
-            <button className="border px-2 py-1 text-sm rounded">A</button>
-            <button className="border px-2 py-1 text-sm rounded">🖌️</button>
-            <button className="border px-2 py-1 text-sm rounded">x₂</button>
-            <button className="border px-2 py-1 text-sm rounded">x²</button>
-            <button className="border px-2 py-1 text-sm rounded">H₁</button>
-            <button className="border px-2 py-1 text-sm rounded">H₂</button>
-            <button className="border px-2 py-1 text-sm rounded">{"<>"}</button>
-            <button className="border px-2 py-1 text-sm rounded">•••</button>
-            <button className="border px-2 py-1 text-sm rounded">🔗</button>
-            <button className="border px-2 py-1 text-sm rounded">𝑥</button>
+            <button
+              onClick={() => formatText("bold")}
+              className="border px-2 py-1 text-sm rounded font-bold"
+            >
+              B
+            </button>
+            <button
+              onClick={() => formatText("italic")}
+              className="border px-2 py-1 text-sm rounded font-bold italic"
+            >
+              I
+            </button>
+            <button
+              onClick={() => formatText("underline")}
+              className="border px-2 py-1 text-sm rounded font-bold underline"
+            >
+              U
+            </button>
+            <button
+              onClick={() => formatText("strikeThrough")}
+              className="border px-2 py-1 text-sm rounded font-bold line-through"
+            >
+              S
+            </button>
           </div>
         </div>
-
-        <textarea
-          rows="10"
-          className="w-full border-none outline-none text-gray-600 text-base placeholder:text-gray-400"
-          placeholder="Start speaking or typing here..."
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-        ></textarea>
+        <div
+          ref={textAreaRef}
+          contentEditable
+          className="w-full min-h-[200px] outline-none text-gray-700 p-2 text-base border border-gray-300 rounded"
+          onInput={(e) => setText(e.currentTarget.textContent)}
+        >
+          {text}
+        </div>
       </div>
 
       {/* Bottom Grid */}
@@ -118,13 +207,18 @@ const Hero = () => {
           <label className="block mb-1 text-gray-600">Dictation Language</label>
           <select
             className="w-full border p-1 rounded mb-2"
-            defaultValue="English (India)"
+            value={speechLang}
+            onChange={(e) => setSpeechLang(e.target.value)}
           >
-            <option>English (India)</option>
+            {languages.map((lang, i) => (
+              <option key={i} value={lang.code}>
+                {lang.name}
+              </option>
+            ))}
           </select>
           <button
             className={`w-full ${
-              listening ? "bg-red-500" : "bg-purple-600"
+              listening ? "bg-red-500" : "bg-blue-600"
             } text-white py-1 rounded`}
             onClick={handleSpeech}
           >
@@ -138,10 +232,29 @@ const Hero = () => {
           <label className="block mb-1 text-gray-600">
             Translate Editor Text To
           </label>
-          <select className="w-full border p-1 rounded mb-2">
-            <option>English</option>
+          <select
+            className="w-full border p-1 rounded mb-2"
+            value={translateLang}
+            onChange={(e) => setTranslateLang(e.target.value)}
+          >
+            {languages.map((lang, i) => (
+              <option key={i} value={lang.code}>
+                {lang.name}
+              </option>
+            ))}
           </select>
-          <button className="w-full border py-1 rounded">🔁 Translate</button>
+          <button
+            className="w-full border py-1 rounded"
+            onClick={handleTranslate}
+            disabled={isTranslating}
+          >
+            {isTranslating ? "Translating..." : "🔁 Translate"}
+          </button>
+          {translated && (
+            <div className="mt-2 p-2 bg-gray-100 rounded text-sm">
+              <strong>Translated:</strong> {translated}
+            </div>
+          )}
         </div>
 
         {/* Transliteration */}
