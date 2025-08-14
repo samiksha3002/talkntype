@@ -69,7 +69,10 @@ export default function Home() {
           >
             Speech to Text
           </button>
-          <button className="bg-white border border-black text-black px-6 py-3 rounded hover:bg-gray-200 transition">
+          <button
+            onClick={() => window.open("https://wa.me/919823599197", "_blank")}
+            className="bg-white border border-black text-black px-6 py-3 rounded hover:bg-gray-200 transition"
+          >
             Contact Us
           </button>
         </div>
