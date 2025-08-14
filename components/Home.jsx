@@ -11,7 +11,7 @@ export default function Home() {
   const sliderImages = [
     "/Image.jpg", // Replace with your actual images
     "/Image2.jpg",
-    "/Image3.jpg",
+    "/t1.webp",
   ];
 
   const settings = {
@@ -64,7 +64,7 @@ export default function Home() {
         {/* BUTTONS */}
         <div className="flex flex-col sm:flex-row justify-center gap-4">
           <button
-            onClick={() => router.push("/learn")}
+            onClick={() => router.push("/login")}
             className="bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700 transition"
           >
             Speech to Text
